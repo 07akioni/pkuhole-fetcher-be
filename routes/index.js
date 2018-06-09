@@ -3,6 +3,30 @@ var router = express.Router();
 var Op = require('sequelize').Op
 const { Post, PostDetail } = require('../models')
 
+function getQueryOption (type) {
+  const queryOption = {
+    'deleted': {
+      deleted: true
+    },
+    'hot': {
+      [Op.or]: {
+        likenum: {
+          [Op.gte]: 3
+        },
+        reply: {
+          [Op.gte]: 3
+        }
+      }
+    }
+  }
+  const option = queryOption[type]
+  if (type) {
+    return option
+  } else {
+    return {}
+  }
+}
+
 router.get('/q', async function (req, res, next) {
   let { fromPid } = req.query
   fromPid = Number.parseInt(fromPid)
@@ -16,15 +40,21 @@ router.get('/q', async function (req, res, next) {
     let postModels
     if (fromPid === 0) {
       postModels = await Post.findAll({
+        where: getQueryOption(req.query.type),
         order: [['pid', 'DESC' ]],
         limit: 15
       })
     } else {
       postModels = await Post.findAll({
         where: {
-          pid: {
-            [Op.lt]: fromPid
-          }
+          [Op.and]: [
+            {
+              pid: {
+                [Op.lt]: fromPid
+              }
+            },
+            getQueryOption(req.query.type)
+          ]
         },
         order: [['pid', 'DESC' ]],
         limit: 15
@@ -75,6 +105,30 @@ router.get('/d', async function (req, res, next) {
         data: postDetailModel.dataValues
       })
     }
+  }
+})
+
+router.get('/s', async function (req, res, next) {
+  let keyword = req.query.keywords ? req.query.keywords.trim().split(' ')[0] : ''
+  if (keyword.length === 0) {
+    res.send({
+      status: 'ok',
+      data: []
+    })
+  } else {
+    const postModels = await Post.findAll({
+      where: {
+        text: {
+          [Op.like]: `%${keyword}%`
+        }
+      },
+      order: [['pid', 'DESC']],
+      limit: 301
+    })
+    res.send({
+      status: 'ok',
+      data: postModels.map(v => v.dataValues)
+    })
   }
 })
 
