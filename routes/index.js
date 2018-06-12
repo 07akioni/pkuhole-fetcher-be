@@ -115,6 +115,18 @@ router.get('/s', async function (req, res, next) {
       status: 'ok',
       data: []
     })
+  } else if (keyword === 'deleted') {
+    const postModels = await Post.findAll({
+      where: {
+        deleted: true
+      },
+      order: [['pid', 'DESC']],
+      limit: 301
+    })
+    res.send({
+      status: 'ok',
+      data: postModels.map(v => v.dataValues)
+    })
   } else {
     const postModels = await Post.findAll({
       where: {
